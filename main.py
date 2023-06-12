@@ -10,6 +10,10 @@ area = BOI.get_area(lanes)
 
 area_image = BOI.draw_lanes(lanes_image, area)
 
-cv2.imshow('lane', result_image)
+final = BOI.get_BOI(area, area_image)
+
+
+
+cv2.imshow('lane', final)
 cv2.waitKey(0)
 cv2.destroyAllWindows()

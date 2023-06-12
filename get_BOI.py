@@ -1,3 +1,4 @@
+
 import cv2
 import math
 import numpy as np
@@ -53,10 +54,10 @@ def find_required_points(coordinates):
 
     if (0 in indices):
         slope3, intercept3 = find_parallel_line_equation(middle_points[indices.index(0)])
-        result[2] = find_intersection_point(slope1, intercept1, slope3, intercept3) 
+        result[2] = find_intersection_point(slope2, intercept2, slope3, intercept3) 
     if (1 in indices):
         slope3, intercept3 = find_parallel_line_equation(middle_points[indices.index(1)])
-        result[3] = find_intersection_point(slope1, intercept1, slope3, intercept3) 
+        result[3] = find_intersection_point(slope2, intercept2, slope3, intercept3) 
     if (2 in indices):
         slope3, intercept3 = find_parallel_line_equation(middle_points[indices.index(2)])
         result[0] = find_intersection_point(slope1, intercept1, slope3, intercept3) 
@@ -70,45 +71,58 @@ def get_area(lanes):
     result = []
     for lane in lanes:
         points = find_required_points(lane)
+
         result.append(points)
 
     return result
 
-def split_line_segment(point1, point2, n, m):
+def get_BOI(areas, frame):
+    result = []
+    for area in areas:
+        left_point_list, right_point_list = split_line_segment(area[0], area[3], 5, 10, area)
+        draw_points(frame, left_point_list)
+        draw_points(frame, right_point_list)
+        list_BOI = []
+        for i in range(len(left_point_list)-1):
+            list_BOI.append([left_point_list[i],right_point_list[i+1]])
+            draw_rectangle(frame, left_point_list[i], right_point_list[i+1])
+        
+
+    result.append(list_BOI)
+
+    print(result)
+    return frame
+
+
+def split_line_segment(point1, point2, n, m, coordinates):
+    slope1, intercept1 = find_line_equation(coordinates[0], coordinates[1])
+    slope2, intercept2 = find_line_equation(coordinates[2], coordinates[3])
+
     x1, y1 = point1
     x2, y2 = point2
 
-    # Calculate the distance between the two points
-    distance = ((x2 - x1)**2 + (y2 - y1)**2)**0.5
+    distance = y2-y1
+    list_num = split_number(distance, n, m)
+    point_list = [(x1, y1)]
+    distance_temp = y1
 
-    # Calculate the percentage increment between each segment
-    increment = m/100
+    for i in range(len(list_num)-1):
+        distance_temp += list_num[i]
+        point_list.append((x1,distance_temp))
+    point_list.append((x1,y2))
 
-    # Calculate the increment in distance for each segment
-    distance_increment = distance * increment
+    right_point_list = []
+    left_point_list = []
+    for i in range(len(point_list)):
+        slope3, intercept3 = find_parallel_line_equation(point_list[i])
+        left_point = find_intersection_point(slope1, intercept1, slope3, intercept3)
+        right_point = find_intersection_point(slope2, intercept2, slope3, intercept3)
+        left_point_list.append(left_point)
+        right_point_list.append(right_point)
+    
+    return left_point_list, right_point_list
 
-    # Initialize the list of points
-    points = [point1]
-
-    # Calculate and add the intermediate points
-    for i in range(1, n):
-        # Calculate the distance for the current segment
-        segment_distance = distance_increment * i
-
-        # Calculate the ratio of the segment distance to the total distance
-        ratio = segment_distance / distance
-
-        # Calculate the x and y coordinates of the point on the line
-        x = x1 + ratio * (x2 - x1)
-        y = y1 + ratio * (y2 - y1)
-
-        # Add the point to the list
-        points.append((x, y))
-
-    # Add the end point
-    points.append(point2)
-
-    return points
+    # return point
 
 def calculate_distance(point1, point2):
     x1, y1 = point1
@@ -128,19 +142,20 @@ def calculate_distance(point1, point2):
 
 def split_number(number, n, m):
     # Calculate and add the remaining parts
-    num = 1
+    powe = 1
     for i in range(1, n):
         # Calculate the size of the next part
-        num += pow(1+m/100, i)
+        powe += pow(1+m/100, i)
 
-    return num
+    first_num = round(number/powe)
+    list_num = [first_num]
 
+    incre = first_num
+    for i in range(1, n):
+        incre = (incre*(1+m/100))
+        list_num.append(round(incre))
 
-print(split_number(100,5,5))
-
-
-
-
+    return list_num
 
 # Draw
 def draw_lanes(frame, lanes):
@@ -164,25 +179,10 @@ def draw_points(frame, points):
 
 def draw_rectangle(frame, top_left, bottom_right):
     cv2.rectangle(frame, top_left, bottom_right, (0, 255, 0), 2)  # Draw a green rectangle
-
     return frame
 
 def draw_dot_segment(frame, points):
     for point in points:
         cv2.circle(frame, (round(x), round(y)), 2, (0, 0, 255), -1)
 
-# point1 = (295, 547)
-# point2 =  (436, 206)
 
-# split_points = split_line_segment(point1, point2, 5, 50)
-
-# print(split_points)
-# frame = cv2.imread('lane.png')
-
-# # Draw the points on the frame
-# frame_with_dots = draw_points(frame, split_points)
-
-# # Display the frame with dots
-# cv2.imshow('Frame', frame_with_dots)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
