@@ -10,7 +10,7 @@ area = BOI.get_area(lanes)
 
 area_image = BOI.draw_lanes(lanes_image, area)
 
-final = BOI.get_BOI(area, area_image)
+final = BOI.get_BOI(area, area_image, 20, 5)
 
 
 

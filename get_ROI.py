@@ -28,7 +28,6 @@ def get_lanes(frame):
 	return lanes_nested
 
 def draw_lanes(frame, lanes):
-	print(lanes) 
 	for lane in lanes:
 		top_left = lane[0]
 		bottom_left = lane[1]

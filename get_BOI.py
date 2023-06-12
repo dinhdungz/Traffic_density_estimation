@@ -76,10 +76,10 @@ def get_area(lanes):
 
     return result
 
-def get_BOI(areas, frame):
+def get_BOI(areas, frame, segment, increment):
     result = []
     for area in areas:
-        left_point_list, right_point_list = split_line_segment(area[0], area[3], 5, 10, area)
+        left_point_list, right_point_list = split_line_segment(area[0], area[3], segment, increment, area)
         draw_points(frame, left_point_list)
         draw_points(frame, right_point_list)
         list_BOI = []
@@ -90,7 +90,6 @@ def get_BOI(areas, frame):
 
     result.append(list_BOI)
 
-    print(result)
     return frame
 
 
@@ -103,6 +102,9 @@ def split_line_segment(point1, point2, n, m, coordinates):
 
     distance = y2-y1
     list_num = split_number(distance, n, m)
+    print("Distance between y2, y1: " + str(distance));
+    print("split to " + str(n) + " part with increment " + str(m) + "%")
+    print(list_num)
     point_list = [(x1, y1)]
     distance_temp = y1
 
@@ -159,7 +161,6 @@ def split_number(number, n, m):
 
 # Draw
 def draw_lanes(frame, lanes):
-    print(lanes) 
     for lane in lanes:
         top_left = lane[0]
         bottom_left = lane[1]
