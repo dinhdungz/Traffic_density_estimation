@@ -1,22 +1,27 @@
 import numpy as np
-import cv2 as cv
-cap = cv.VideoCapture(0)
-# Define the codec and create VideoWriter object
-fourcc = cv.VideoWriter_fourcc(*'XVID')
-out = cv.VideoWriter('output.avi', fourcc, 20.0, (640,  480))
+import cv2
+# img = cv2.imread('BOI_w_750.jpg', cv2.IMREAD_GRAYSCALE)
+cap = cv2.VideoCapture('highway.mp4')
+
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+fps =  cap.get(cv2.CAP_PROP_FPS)
+
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter('output.avi', fourcc, fps, (width, height))
+
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         break
-    frame = cv.flip(frame, 0)
-    # write the flipped frame
-    cv.imshow('frame', frame)
+    # img = imutils.resize(frame, width = 750)
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     out.write(frame)
-    
-    if cv.waitKey(1) == ord('q'):
+    cv2.imshow('video', image)
+    if cv2.waitKey(1) == ord('q'):
         break
-# Release everything if job is finished
+
 cap.release()
 out.release()
-cv.destroyAllWindows()
+cv2.destroyAllWindows()

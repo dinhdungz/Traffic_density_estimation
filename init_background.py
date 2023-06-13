@@ -1,15 +1,23 @@
 import numpy as np
 import cv2
-import imutils
 import math
-# img = cv2.imread('BOI_w_750.jpg', cv2.IMREAD_GRAYSCALE)
-cap = cv2.VideoCapture('highway.mp4')
 
+# Imread video
+cap = cv2.VideoCapture('1.mp4')
+
+# Setup video writer
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+fps =  cap.get(cv2.CAP_PROP_FPS)
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('output.avi', fourcc, 20.0, (750,421))
-N = 4
+out = cv2.VideoWriter('output.avi', fourcc, fps, (width,height))
+
+# Number frame in init background
+N = 6 
 init_background = True
-BOIs_coor = [[(329,64), (386, 98)], [(296, 130), (386,168)], [(270, 181),(389, 239)]]
+#Block coordinates
+BOIs_coor = [[(492, 356), (511, 403)], [(412, 423), (452,477)], [(210, 573),(265, 670)]]
+
 count = 0
 BOIs_var = [[0 for i in range(N)] for j in range(len(BOIs_coor))]
 BOIs_mean = [[0 for i in range(N)] for j in range(len(BOIs_coor))]
@@ -19,37 +27,25 @@ lambda_b = [100 for i in range(len(BOIs_coor))]
 lr_f = [0.01 for i in range(len(BOIs_coor))]
 lr_b = [0.01 for i in range(len(BOIs_coor))]
 lr_am = [0.01 for i in range(len(BOIs_coor))]
+p_f = [0.5 for i in range(len(BOIs_coor))]
+
 
 def draw_BOI(img, coordinates):
+    # draw block
     for block in coordinates:
-        cv2.rectangle(img, block[0], block[1], (0,255,0), 2)
+        cv2.rectangle(img, block[0], block[1], (0,255,0), 1)
 
 def get_mean_variance(img, coordinate_block):
+    # Get mean, variance of block
     x_min, y_min = coordinate_block[0]
     x_max, y_max = coordinate_block[1]
-    sum_mean = 0
-    sum_var = 0
-    for i in range(x_min, x_max +1):
-        for j in range(y_min, y_max+1):
-            sum_mean += img[i, j]
-    mean = sum_mean/((x_max - x_min)*(y_max - y_min))
-
-    for i in range(x_min, x_max +1):
-        for j in range(y_min, y_max+1):
-            sum_var += (img[i, j] - mean)**2
-    
-    variance = sum_var/((x_max - x_min)*(y_max - y_min))
+    mean = np.mean(img[x_min: x_max, y_min: y_max])
+    variance = np.var(img[x_min: x_max, y_min: y_max])
     return mean, variance
 
 def get_Vov(list_var):
-    sum_mean = sum(list_var)
-    sum_var = 0
-
-    mean = sum_mean/(len(list_var))
-
-    for var in list_var:
-        sum_var += (var - mean)**2
-    Vov = sum_var/(len(list_var))
+    # get variance of variance of block with some frame
+    Vov = np.var(list_var)
     return Vov
 
 def proba_mean(x, mean, var):
@@ -69,6 +65,18 @@ def update_model(i, delta_v, mean):
     BOIs_mean[i][0] = (1 - lr_am[i]) * BOIs_mean[i][0] + lr_am[i] * mean
     BOIs_var[i][0] = (1 - lr_am[i]) * BOIs_var[i][0] + lr_am[i]*(mean - BOIs_mean[i][0])**2
 
+def update_p_f(positions, p_f):
+    for i in range(len(p_f) - 1):
+        for pos in positions:
+            if i == pos or i - 1 == pos:
+                p_f[i] = 0.5
+                p_f[i+1] = 0.6
+            else:
+                p_f[i] = 0.4
+    p_f[0] = 0.5
+    print(p_f)
+    return p_f
+
 
 
 while cap.isOpened():
@@ -77,8 +85,7 @@ while cap.isOpened():
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         break
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    img = imutils.resize(gray, width = 750)
+    img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     s+=1
     n_o = 0
@@ -90,7 +97,9 @@ while cap.isOpened():
                 BOIs_var[i][count] = var
                 BOIs_mean[i][count] = mean
             count +=1
-            cv2.putText(img, 'Init background', (40, 40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+            cv2.putText(frame, 'Init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+            cv2.imshow("video",img)
+            out.write(frame)
         else:
             pas = True
             for i in range(len(BOIs_coor)):
@@ -104,24 +113,29 @@ while cap.isOpened():
                     mean, var = get_mean_variance(img, BOIs_coor[i])
                     BOIs_var[i].append(var)
                     BOIs_mean[i].append(mean)
-                    cv2.putText(img, 'Init background', (40, 40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+                    cv2.putText(frame, 'Init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+                    cv2.imshow("video",img)
+                    out.write(frame)
 
             if pas:
                 init_background = False
                 print("Done init background")
-                cv2.putText(img, 'Done init background', (40, 40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+                cv2.putText(frame, 'Done init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+                cv2.imshow("video",img)
+                out.write(frame)
 
     else:
-        
+        positions = []
         for i in range(len(BOIs_coor)):
             mean, var = get_mean_variance(img, BOIs_coor[i])
             delta_v = abs(var - BOIs_var[i][0])
             p_vb = math.exp(-delta_v/lambda_b[i])
             p_vf = 1 - math.exp(-delta_v/lambda_f[i])
-            p_fv = p_vf/(p_vf + p_vb)
+            p_fv =  (p_vf * p_f[i])/(p_vb * (1 - p_f[i]) + p_vf * p_f[i])   # Edit
             p_m = proba_mean(mean, BOIs_mean[i][0], BOIs_var[i][0])
             if p_fv > 0.7 :
                 n_o += 1
+                positions.append(i)
                 lambda_f[i] = (1 - lr_f[i]) * lambda_f[i] + lr_f[i] * delta_v
             elif p_fv < 0.5:
                 update_model(i, delta_v, mean)
@@ -131,16 +145,18 @@ while cap.isOpened():
             else:
                 if p_fv > 0.5 and proba_mean(mean, BOIs_mean[i][0], BOIs_var[i][0]) > proba_mean(BOIs_mean[i][0] + 3*BOIs_var[i][0], BOIs_mean[i][0], BOIs_var[i][0]):
                     n_o +=1
+                    positions.append(i)
                 else:
                     update_model(i, delta_v, mean)
+        p_f = update_p_f(positions, p_f)
         rate = round(n_o/len((BOIs_coor)), 2)
-        cv2.putText(img, f'{rate * 100}%', (40, 40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
-    draw_BOI(img, BOIs_coor)
+        cv2.putText(frame, f'{rate * 100}%', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+    draw_BOI(frame, BOIs_coor)
     cv2.imshow("video",img)
-    # out.write(img)
+    out.write(frame)
     if cv2.waitKey(1) == ord('q'):
         break
 
 cap.release()
-# out.release()
+out.release()
 cv2.destroyAllWindows()
