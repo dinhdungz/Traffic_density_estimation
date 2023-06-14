@@ -27,8 +27,9 @@ lambda_b = [100 for i in range(len(BOIs_coor))]
 lr_f = [0.01 for i in range(len(BOIs_coor))]
 lr_b = [0.01 for i in range(len(BOIs_coor))]
 lr_am = [0.01 for i in range(len(BOIs_coor))]
-p_f = [0.5 for i in range(len(BOIs_coor))]
-
+p_f = [0.4 for i in range(len(BOIs_coor))]
+g_mean = []
+g_var = []
 
 def draw_BOI(img, coordinates):
     # draw block
@@ -48,7 +49,10 @@ def get_Vov(list_var):
     Vov = np.var(list_var)
     return Vov
 
-def proba_mean(x, mean, var):
+def proba_mean(x, mean, var, lr):
+    mean = (1 - lr) * mean + lr * x
+    var = (1 - lr) * var + lr * (mean - x)**2 
+
     return math.exp((mean - x)/(2*var))/math.sqrt(2*math.pi*var)
 
 def update_model(i, delta_v, mean):
@@ -57,24 +61,20 @@ def update_model(i, delta_v, mean):
     else:
         lr_b[i] = 0.1
     lambda_b[i] = (1 - lr_b[i]) * lambda_b[i] + lr_b[i] * delta_v
-    if proba_mean(mean, BOIs_mean[i][0], BOIs_var[i][0]) > proba_mean(BOIs_mean[i][0] + 3*BOIs_var[i][0], BOIs_mean[i][0], BOIs_var[i][0]):
+    if proba_mean(mean, BOIs_mean[i][0], BOIs_var[i][0], lr_am[i]) > proba_mean(BOIs_mean[i][0] + 3*BOIs_var[i][0], BOIs_mean[i][0], BOIs_var[i][0], lr_am[i]):
         lr_am[i] = 0.01
     else:
         lr_am[i] = 0.1
     
-    BOIs_mean[i][0] = (1 - lr_am[i]) * BOIs_mean[i][0] + lr_am[i] * mean
-    BOIs_var[i][0] = (1 - lr_am[i]) * BOIs_var[i][0] + lr_am[i]*(mean - BOIs_mean[i][0])**2
+    # g_mean = (1 - lr_am[i]) * g_mean + lr_am[i] * mean
+    # g_var = (1 - lr_am[i]) * g_var + lr_am[i]*(mean - g_mean)**2
 
 def update_p_f(positions, p_f):
-    for i in range(len(p_f) - 1):
-        for pos in positions:
-            if i == pos or i - 1 == pos:
-                p_f[i] = 0.5
-                p_f[i+1] = 0.6
-            else:
-                p_f[i] = 0.4
+    for pos in positions:
+        p_f[pos] = 0.5
+        if pos + 1 < len(p_f):
+            p_f[pos + 1] = 0.6
     p_f[0] = 0.5
-    print(p_f)
     return p_f
 
 
@@ -119,6 +119,8 @@ while cap.isOpened():
 
             if pas:
                 init_background = False
+                g_mean = np.mean(BOIs_mean, axis = 1)
+                g_var = np.mean(BOIs_var, axis = 1)
                 print("Done init background")
                 cv2.putText(frame, 'Done init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
                 cv2.imshow("video",img)
@@ -128,11 +130,11 @@ while cap.isOpened():
         positions = []
         for i in range(len(BOIs_coor)):
             mean, var = get_mean_variance(img, BOIs_coor[i])
-            delta_v = abs(var - BOIs_var[i][0])
+            delta_v = abs(var - g_var[i])
             p_vb = math.exp(-delta_v/lambda_b[i])
             p_vf = 1 - math.exp(-delta_v/lambda_f[i])
             p_fv =  (p_vf * p_f[i])/(p_vb * (1 - p_f[i]) + p_vf * p_f[i])   # Edit
-            p_m = proba_mean(mean, BOIs_mean[i][0], BOIs_var[i][0])
+            p_m = proba_mean(mean, g_mean[i], g_var[i], lr_am[i])
             if p_fv > 0.7 :
                 n_o += 1
                 positions.append(i)
@@ -140,14 +142,16 @@ while cap.isOpened():
             elif p_fv < 0.5:
                 update_model(i, delta_v, mean)
                 if get_Vov(BOIs_var[i]) < 100:
-                    BOIs_var[i][0] = 0.01 * var + (1 - 0.01)*BOIs_var[i][0]
-                    BOIs_mean[i][0] = 0.01 * var + (1 - 0.01)*BOIs_mean[i][0]
+                    g_var[i] = 0.01 * var + (1 - 0.01)*g_var[i]
+                    g_mean[i] = 0.01 * var + (1 - 0.01)*g_var[i]
             else:
-                if p_fv > 0.5 and proba_mean(mean, BOIs_mean[i][0], BOIs_var[i][0]) > proba_mean(BOIs_mean[i][0] + 3*BOIs_var[i][0], BOIs_mean[i][0], BOIs_var[i][0]):
+                if p_fv > 0.5 and proba_mean(mean, g_mean[i], g_var[i],lr_am[i]) > proba_mean(g_mean[i] + 3*g_var[i], g_mean[i], g_var[i], lr_am[i]):
                     n_o +=1
                     positions.append(i)
                 else:
                     update_model(i, delta_v, mean)
+
+        p_f = [0.4 for i in range(len(BOIs_coor))]
         p_f = update_p_f(positions, p_f)
         rate = round(n_o/len((BOIs_coor)), 2)
         cv2.putText(frame, f'{rate * 100}%', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
