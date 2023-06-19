@@ -92,7 +92,6 @@ def get_BOI(areas, frame, segment, increment):
 
     return frame
 
-
 def split_line_segment(point1, point2, n, m, coordinates):
     slope1, intercept1 = find_line_equation(coordinates[0], coordinates[1])
     slope2, intercept2 = find_line_equation(coordinates[2], coordinates[3])
@@ -104,7 +103,7 @@ def split_line_segment(point1, point2, n, m, coordinates):
     list_num = split_number(distance, n, m)
     print("Distance between y2, y1: " + str(distance));
     print("split to " + str(n) + " part with increment " + str(m) + "%")
-    print(list_num)
+    print(str(list_num) + " = " + str(sum(list_num)))
     point_list = [(x1, y1)]
     distance_temp = y1
 
@@ -185,5 +184,3 @@ def draw_rectangle(frame, top_left, bottom_right):
 def draw_dot_segment(frame, points):
     for point in points:
         cv2.circle(frame, (round(x), round(y)), 2, (0, 0, 255), -1)
-
-
