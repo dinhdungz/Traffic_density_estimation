@@ -13,7 +13,7 @@ height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 fps =  cap.get(cv2.CAP_PROP_FPS)
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('output_0.avi', fourcc, fps, (width,height))
+out = cv2.VideoWriter('output.avi', fourcc, fps, (width,height))
 
 # Number frame in init background
 N = 6 
@@ -102,9 +102,9 @@ while cap.isOpened():
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         break
-    img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     kernel = np.ones((5,5),np.float32)/25
-    img = cv2.filter2D(img,-1,kernel)
+    img = cv2.filter2D(image,-1,kernel)
     s+=1
     n_o = 0
     # Generate ROI and BOI
@@ -130,8 +130,6 @@ while cap.isOpened():
                 BOIs_mean[i][count] = mean
             count +=1
             cv2.putText(frame, 'Init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
-            cv2.imshow("video",frame)
-            out.write(frame)
         else:
             pas = True
             for i in range(N_BOI):
@@ -155,8 +153,7 @@ while cap.isOpened():
                 print(f"g_var {g_var}")
                 # print("Done init background")
                 cv2.putText(frame, 'Done init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
-        cv2.imshow("video",frame)
-        out.write(frame)
+
     else:
         # Classify object
         positions = []
@@ -193,8 +190,8 @@ while cap.isOpened():
         rate = round(n_o/len((BOIs_coor)), 2)
         cv2.putText(frame, f'{rate * 100}%', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
         draw_BOI(frame, BOIs_coor, positions)
-        cv2.imshow("video",frame)
-        out.write(frame)
+    cv2.imshow("video",frame)
+    out.write(frame)
     if cv2.waitKey(1) == ord('q'):
         break
 print(f"BOI_coors - {BOIs_coor}")
