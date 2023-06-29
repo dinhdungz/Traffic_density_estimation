@@ -181,8 +181,3 @@ def draw_points(frame, points):
 def draw_rectangle(frame, top_left, bottom_right):
     cv2.rectangle(frame, top_left, bottom_right, (0, 255, 0), 2)  # Draw a green rectangle
     return frame
-
-def draw_dot_segment(frame, points):
-    for point in points:
-        cv2.circle(frame, (round(x), round(y)), 2, (0, 0, 255), -1)
-
