@@ -7,9 +7,9 @@ lanes = ROI.get_lanes(img)
 lanes_image = ROI.draw_lanes(img, lanes)
 
 area = BOI.get_area(lanes)
-area_image = BOI.draw_lanes(lanes_image, area)
+# area_image = BOI.draw_lanes(img, area)
 
-boi_image = BOI.get_BOI(area, area_image, 15, 5)
+boi_image = BOI.get_BOI(area, img, 15, 5)
 
 cv2.imshow('lane', boi_image)
 cv2.waitKey(0)
