@@ -108,10 +108,9 @@ def split_line_segment(point1, point2, n, m, coordinates):
     point_list = [(x1, y1)]
     distance_temp = y1
 
-    for i in range(len(list_num)-1):
+    for i in range(len(list_num)):
         distance_temp += list_num[i]
         point_list.append((x1,distance_temp))
-    point_list.append((x1,y2))
 
     right_point_list = []
     left_point_list = []
