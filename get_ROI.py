@@ -17,13 +17,19 @@ def get_lanes(frame):
 	cv2.imshow('image', frame)
 	lanes = []
 	lane = []
+	lanes_nested = []
 	params = {'lanes': lanes, 'lane': lane, 'image': frame}
 	cv2.setMouseCallback('image', click_event, params)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
 
 	# Convert lane coordinates to nested list format
-	lanes_nested = [lane[i:i+4] for i in range(0, len(lanes[0]), 4)]
+	# lanes_nested = [lane[i:i+4] for i in range(0, len(lanes[0]), 4)]
+
+	count = 0
+	for i in range(int(len(lane)/2)-1):
+		lanes_nested.append(lane[count:count+4])
+		count+=2
 
 	return lanes_nested
 
