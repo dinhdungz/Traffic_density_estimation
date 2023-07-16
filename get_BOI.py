@@ -8,6 +8,8 @@ def find_line_equation(point1, point2):
     x2, y2 = point2
     
     # Calculate the slope
+    if x1 == x2:
+        x1+=1
     slope = (y2 - y1) / (x2 - x1)
     
     # Calculate the y-intercept
@@ -77,20 +79,20 @@ def get_area(lanes):
     return result
 
 def get_BOI(areas, frame, segment, increment):
-    # result = []
+    result = []
     for area in areas:
         left_point_list, right_point_list = split_line_segment(area[0], area[3], segment, increment, area)
-        draw_points(frame, left_point_list)
-        draw_points(frame, right_point_list)
+        # draw_points(frame, left_point_list)
+        # draw_points(frame, right_point_list)
         list_BOI = []
         for i in range(len(left_point_list)-1):
             list_BOI.append([left_point_list[i],right_point_list[i+1]])
             draw_rectangle(frame, left_point_list[i], right_point_list[i+1])
         
 
-    # result.append(list_BOI)
+        result.append(list_BOI)
 
-    return frame, list_BOI
+    return frame, result
 
 
 def split_line_segment(point1, point2, n, m, coordinates):
@@ -102,16 +104,15 @@ def split_line_segment(point1, point2, n, m, coordinates):
 
     distance = y2-y1
     list_num = split_number(distance, n, m)
-    print("Distance between y2, y1: " + str(distance));
-    print("split to " + str(n) + " part with increment " + str(m) + "%")
-    print(list_num)
+    # print("Distance between y2, y1: " + str(distance));
+    # print("split to " + str(n) + " part with increment " + str(m) + "%")
+    # print(list_num)
     point_list = [(x1, y1)]
     distance_temp = y1
 
-    for i in range(len(list_num)-1):
+    for i in range(len(list_num)):
         distance_temp += list_num[i]
         point_list.append((x1,distance_temp))
-    point_list.append((x1,y2))
 
     right_point_list = []
     left_point_list = []

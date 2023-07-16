@@ -1,10 +1,10 @@
 # Ignore folder data
-./Data Road Traffic
-./video_test
+Data Road Traffic
 
 #Ignore test
-./test.py
-./test_time.py
+test.py
+test_time.py
 
 #Ignore draf
-./draf.py
+draf.py
+
