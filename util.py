@@ -3,7 +3,6 @@ import cv2
 import math
 import get_ROI as ROI
 import get_BOI as BOI 
-import imutils
 
 def draw_BOI(img, coordinates, positions):
     # draw block
@@ -98,14 +97,13 @@ def estimate(video_path, N_BOI, N, increment):
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     fps =  cap.get(cv2.CAP_PROP_FPS)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output_2.avi', fourcc, fps, (width,height))
+    out = cv2.VideoWriter('output.avi', fourcc, fps, (width,height))
 
     # Number frame in init background
     init_background = True
 
     ret, frame = cap.read()
     ret, frame = cap.read()
-    # frame = imutils.resize(frame, width=800)
 
     BOIs_coor = gen_boi(frame, N_BOI, increment)
 
@@ -115,12 +113,11 @@ def estimate(video_path, N_BOI, N, increment):
     BOIs_mean = create_3d_list(N_lane, N_BOI, N)
     
 
-    # Hệ số lambda size N_lane X N_block
+    # lambda size N_lane X N_block
     lambda_f = [[100 for i in range(N_BOI)] for j in range(N_lane)]
     lambda_b = [[100 for i in range(N_BOI)] for j in range(N_lane)]
     lr_f = [[0.01 for i in range(N_BOI)] for j in range(N_lane)]
     lr_b = [[0.01 for i in range(N_BOI)] for j in range(N_lane)]
-    lr_am = [[0.01 for i in range(N_BOI)] for j in range(N_lane)]
     p_f = [[0.4 for i in range(N_BOI)] for j in range(N_lane)]
 
     # Mean and var for classify object
@@ -183,7 +180,6 @@ def estimate(video_path, N_BOI, N, increment):
             # Classify object
             
             density = []
-            y_coor = 100
             for lane in range(N_lane):
                 n = 0
                 positions = []
