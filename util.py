@@ -83,10 +83,11 @@ def create_3d_list(x, y, z):
 def view_density(frame, density):
     total_rate = (sum(density)/len(density))
     y_coor = 100
+    height, width, channels = np.shape(frame)
     for i in range(len(density)):
         cv2.putText(frame, f'Lane {i + 1}: {density[i]}%', (100, y_coor),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2 )
         y_coor += 20
-    cv2.putText(frame, f'Total: {int(total_rate)}%', (400, 50),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2) 
+    cv2.putText(frame, f'Total: {int(total_rate)}%', (int(width/2), 50),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2) 
 
 def estimate(video_path, N_BOI, N, increment):
     # Read video

@@ -2,8 +2,9 @@
 Data Road Traffic
 
 #Ignore test
-test.py
-test_time.py
+/test.py
+
+/test_time.py
 
 #Ignore draf
 draf.py
@@ -12,4 +13,4 @@ draf.py
 data
 
 #Ignore pycache
-__pycache__
+/__pycache__
