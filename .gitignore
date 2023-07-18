@@ -7,3 +7,9 @@ test_time.py
 
 #Ignore draf
 draf.py
+
+#Ignore data for evaluate
+data
+
+#Ignore pycache
+__pycache__

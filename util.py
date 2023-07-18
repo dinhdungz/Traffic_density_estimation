@@ -130,6 +130,7 @@ def estimate(video_path, N_BOI, N, increment):
     count = 0
     n_heavy = 0
     n_medium = 0
+    n_light = 0
     n_frame = 0
 
     while cap.isOpened():
@@ -221,21 +222,24 @@ def estimate(video_path, N_BOI, N, increment):
                 v_density = density
             view_density(frame, v_density)
             n_frame += 1
-            if rate > 70:
+            if rate > 65:
                 n_heavy += 1
-            elif 40 <= rate <= 70:
+            elif 40 <= rate <= 65:
                 n_medium += 1
+            else:
+                n_light += 1
 
         cv2.imshow("video",frame)
         out.write(frame)
         if cv2.waitKey(1) == ord('q'):
             break
-    print((n_heavy/n_frame))
-    print((n_medium/n_frame))
-
-    if (n_heavy/n_frame) > 0.5 :
+ 
+    if n_frame == 0:
+        return 
+    
+    if max(n_light, n_medium, n_heavy) == n_heavy:
         result = 'heavy'
-    elif (n_medium/n_frame) > 0.5:
+    elif max(n_light, n_medium, n_heavy) == n_medium:
         result = 'medium'
     else:
         result = 'light'
