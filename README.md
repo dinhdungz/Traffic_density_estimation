@@ -12,5 +12,12 @@ There are a few parameters you need to pay attention to:
 3. Number of frames for background initialization
 4. Increment of blocks (Because distant vehicles are small and nearby are large, the blocks in the back need to be larger than the previous ones in a certain ratio)
 
-### Result
+### 3. Result
 Each frame is classified as light, medium, or heavy. We choose the category to which the maximum number of frames from the video sequence has been classified.
+
+
+https://github.com/dinhdungz/traffic_density_estimation/assets/102871487/96ef1a1b-892d-42dc-8aef-e36cd3913448
+
+## How to use
+1. Run main.py with parameters
+2. Select lane
