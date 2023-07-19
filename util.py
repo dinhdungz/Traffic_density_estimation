@@ -3,6 +3,7 @@ import cv2
 import math
 import get_ROI as ROI
 import get_BOI as BOI 
+from vidgear.gears import WriteGear
 
 def draw_BOI(img, coordinates, positions):
     # draw block
@@ -92,17 +93,10 @@ def estimate(video_path, N_BOI, N, increment):
     # Read video
     cap = cv2.VideoCapture(video_path)
 
-    # Setup video writer
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    fps =  cap.get(cv2.CAP_PROP_FPS)
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, fps, (width,height))
+    out = WriteGear(output= 'Output.mp4') #Define writer with output filename 'Output.mp4' 
 
-    # Number frame in init background
     init_background = True
 
-    ret, frame = cap.read()
     ret, frame = cap.read()
 
     BOIs_coor = gen_boi(frame, N_BOI, increment)
@@ -242,6 +236,6 @@ def estimate(video_path, N_BOI, N, increment):
         result = 'light'
 
     cap.release()
-    out.release()
+    out.close()
     cv2.destroyAllWindows()
     return result
