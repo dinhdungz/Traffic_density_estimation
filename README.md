@@ -21,3 +21,7 @@ https://github.com/dinhdungz/traffic_density_estimation/assets/102871487/96ef1a1
 ## How to use
 1. Run main.py with parameters
 2. Select lane
+
+## Reference
+1. Garg, K., Lam, S.-K., Srikanthan, T., & Agarwal, V. (2016). Real-time road traffic density estimation using block variance. 2016 IEEE Winter Conference on Applications of Computer Vision (WACV). doi:10.1109/wacv.2016.7477607
+2. Garg, K., Ramakrishnan, N., Prakash, A., & Srikanthan, T. (2019). Rapid and Robust Background Modeling Technique for Low-Cost Road Traffic Surveillance Systems. IEEE Transactions on Intelligent Transportation Systems, 1–12. doi:10.1109/tits.2019.2917560
