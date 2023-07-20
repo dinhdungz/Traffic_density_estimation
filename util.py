@@ -2,16 +2,20 @@ import numpy as np
 import cv2
 import math
 import get_ROI as ROI
-import get_BOI as BOI 
+import get_BOI as BOI
 from vidgear.gears import WriteGear
+
 
 def draw_BOI(img, coordinates, positions):
     # draw block
     for i in range(len(coordinates)):
         if i in positions:
-            cv2.rectangle(img, coordinates[i][0], coordinates[i][1], (0,0,255), 1)
+            cv2.rectangle(img, coordinates[i][0],
+                          coordinates[i][1], (0, 0, 255), 1)
         else:
-            cv2.rectangle(img, coordinates[i][0], coordinates[i][1], (0,255,0), 1)
+            cv2.rectangle(img, coordinates[i][0],
+                          coordinates[i][1], (0, 255, 0), 1)
+
 
 def get_mean_variance(img, coordinate_block):
     # return mean, variance of block
@@ -22,17 +26,20 @@ def get_mean_variance(img, coordinate_block):
     variance = np.var(img[x_min: x_max, y_min: y_max])
     return mean, variance
 
+
 def get_Vov(list_var):
     # return variance of variance of block with some frame
     Vov = np.var(list_var)
     return Vov
 
+
 def proba_mean(x, mean, var, lr):
     # return gau distribution
     mean = (1 - lr) * mean + lr * x
-    var = (1 - lr) * var + lr * (mean - x)**2 
-    p = math.exp(-(x - mean)**2/(2*var))/(math.sqrt(2*math.pi*var))
+    var = (1 - lr) * var + lr * (mean - x)**2
+    p = math.exp(-(x - mean)**2 / (2 * var)) / (math.sqrt(2 * math.pi * var))
     return p
+
 
 def update_model(lambda_b, delta_v):
     # update lambda b, lr b
@@ -41,9 +48,10 @@ def update_model(lambda_b, delta_v):
     else:
         lr_b = 0.05
     if lambda_b < 500:
-        lambda_b = (1 - lr_b) * lambda_b + lr_b* delta_v
+        lambda_b = (1 - lr_b) * lambda_b + lr_b * delta_v
 
     return lambda_b, lr_b
+
 
 def update_p_f(positions, p_f):
     # upadate prior probability
@@ -54,6 +62,7 @@ def update_p_f(positions, p_f):
     p_f[0] = 0.5
     return p_f
 
+
 def gen_boi(frame, N_BOI, increment):
     # generate blocks
     lanes = ROI.get_lanes(frame)
@@ -61,12 +70,13 @@ def gen_boi(frame, N_BOI, increment):
 
     area = BOI.get_area(lanes)
 
-    boi_image, BOIs_coor = BOI.get_BOI(area, lanes_image,N_BOI, increment)
-    
+    boi_image, BOIs_coor = BOI.get_BOI(area, lanes_image, N_BOI, increment)
+
     cv2.imshow('lane', boi_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     return BOIs_coor
+
 
 def create_3d_list(x, y, z):
     lst = []
@@ -80,20 +90,34 @@ def create_3d_list(x, y, z):
         lst.append(lst_2d)
     return lst
 
+
 def view_density(frame, density):
-    total_rate = (sum(density)/len(density))
+    total_rate = (sum(density) / len(density))
     y_coor = 100
     height, width, channels = np.shape(frame)
     for i in range(len(density)):
-        cv2.putText(frame, f'Lane {i + 1}: {density[i]}%', (100, y_coor),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2 )
+        cv2.putText(
+            frame,
+            f'Lane {i + 1}: {density[i]}%',
+            (100,
+             y_coor),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0,
+             255,
+             0),
+            2)
         y_coor += 20
-    cv2.putText(frame, f'Total: {int(total_rate)}%', (int(width/2), 50),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2) 
+    cv2.putText(frame, f'Total: {int(total_rate)}%', (int(
+        width / 2), 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
 
 def estimate(video_path, N_BOI, N, increment):
     # Read video
     cap = cv2.VideoCapture(video_path)
 
-    out = WriteGear(output= 'Output.mp4') #Define writer with output filename 'Output.mp4' 
+    # Define writer with output filename 'Output.mp4'
+    out = WriteGear(output='Output.mp4')
 
     init_background = True
 
@@ -105,7 +129,6 @@ def estimate(video_path, N_BOI, N, increment):
     # Mean and var blocks for init background size N x N_ Block
     BOIs_var = create_3d_list(N_lane, N_BOI, N)
     BOIs_mean = create_3d_list(N_lane, N_BOI, N)
-    
 
     # lambda size N_lane X N_block
     lambda_f = [[100 for i in range(N_BOI)] for j in range(N_lane)]
@@ -133,9 +156,8 @@ def estimate(video_path, N_BOI, N, increment):
             print("Can't receive frame (stream end?). Exiting ...")
             break
         image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        kernel = np.ones((5,5),np.float32)/25
-        img = cv2.filter2D(image,-1,kernel)
-        
+        kernel = np.ones((5, 5), np.float32) / 25
+        img = cv2.filter2D(image, -1, kernel)
 
         # Initialization background
         if init_background:
@@ -146,7 +168,8 @@ def estimate(video_path, N_BOI, N, increment):
                         BOIs_var[lane][i][count] = var
                         BOIs_mean[lane][i][count] = mean
                 count += 1
-                cv2.putText(frame, 'Init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+                cv2.putText(frame, 'Init background', (100, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             else:
                 pas = True
                 for lane in range(N_lane):
@@ -158,21 +181,24 @@ def estimate(video_path, N_BOI, N, increment):
                             pas = False
                             BOIs_var[lane][i].pop(0)
                             BOIs_mean[lane][i].pop(0)
-                            mean, var = get_mean_variance(img, BOIs_coor[lane][i])
+                            mean, var = get_mean_variance(
+                                img, BOIs_coor[lane][i])
                             BOIs_var[lane][i].append(var)
                             BOIs_mean[lane][i].append(mean)
-                cv2.putText(frame, 'Init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
-                
+                cv2.putText(frame, 'Init background', (100, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
                 if pas:
                     init_background = False
-                    g_mean = np.mean(BOIs_mean, axis = 2)
-                    g_var = np.mean(BOIs_var, axis = 2)
-                    
-                    cv2.putText(frame, 'Done init background', (100, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2 )
+                    g_mean = np.mean(BOIs_mean, axis=2)
+                    g_var = np.mean(BOIs_var, axis=2)
+
+                    cv2.putText(frame, 'Done init background', (100, 100),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         else:
             # Classify object
-            
+
             density = []
             for lane in range(N_lane):
                 n = 0
@@ -182,33 +208,37 @@ def estimate(video_path, N_BOI, N, increment):
                     mean, var = get_mean_variance(img, BOIs_coor[lane][i])
                     delta_v = abs(var - g_var[lane][i])
                     delta_m = abs(mean - g_mean[lane][i])
-                    p_vb = math.exp(-delta_v/lambda_b[lane][i])
-                    p_vf = 1 - math.exp(-delta_v/lambda_f[lane][i])
-                    p_fv =  (p_vf * p_f[lane][i])/(p_vb * (1 - p_f[lane][i]) + p_vf * p_f[lane][i])
-                    if p_fv > 0.7 :
+                    p_vb = math.exp(-delta_v / lambda_b[lane][i])
+                    p_vf = 1 - math.exp(-delta_v / lambda_f[lane][i])
+                    p_fv = (p_vf * p_f[lane][i]) / (p_vb * \
+                            (1 - p_f[lane][i]) + p_vf * p_f[lane][i])
+                    if p_fv > 0.7:
                         n += 1
                         positions.append(i)
                         # cv2.putText(frame, f'{int(var)} - {int(g_var[lane][i])}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2 )
                         if lambda_f[lane][i] < 2000:
-                            lambda_f[lane][i] = (1 - lr_f[lane][i]) * lambda_f[lane][i] + lr_f[lane][i] * delta_v
+                            lambda_f[lane][i] = (
+                                1 - lr_f[lane][i]) * lambda_f[lane][i] + lr_f[lane][i] * delta_v
                     elif p_f[lane][i] < 0.5 and p_fv < 0.5:
-                        lambda_b[lane][i], lr_b[lane][i] = update_model(lambda_b[lane][i], delta_v)
+                        lambda_b[lane][i], lr_b[lane][i] = update_model(
+                            lambda_b[lane][i], delta_v)
                     else:
-                        if delta_m > 20 :
-                            n +=1
+                        if delta_m > 20:
+                            n += 1
                             # cv2.putText(frame, f'{int(delta_m)}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2 )
                             positions.append(i)
                         else:
-                            lambda_b[lane][i], lr_b[lane][i] = update_model(lambda_b[lane][i], delta_v)
-                    
-                d_lane = int(n * 100/N_BOI) 
+                            lambda_b[lane][i], lr_b[lane][i] = update_model(
+                                lambda_b[lane][i], delta_v)
+
+                d_lane = int(n * 100 / N_BOI)
                 density.append(d_lane)
                 draw_BOI(frame, BOIs_coor[lane], positions)
-            
+
                 p_f[lane] = [0.4 for i in range(N_BOI)]
                 p_f[lane] = update_p_f(positions, p_f[lane])
 
-            rate = int(sum(density)/len((density)))
+            rate = int(sum(density) / len((density)))
             if n_frame % 20 == 0:
                 v_density = density
             view_density(frame, v_density)
@@ -220,14 +250,14 @@ def estimate(video_path, N_BOI, N, increment):
             else:
                 n_light += 1
 
-        cv2.imshow("video",frame)
+        cv2.imshow("video", frame)
         out.write(frame)
         if cv2.waitKey(1) == ord('q'):
             break
- 
+
     if n_frame == 0:
-        return 
-    
+        return
+
     if max(n_light, n_medium, n_heavy) == n_heavy:
         result = 'heavy'
     elif max(n_light, n_medium, n_heavy) == n_medium:
