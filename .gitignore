@@ -4,5 +4,6 @@ Data Road Traffic
 #Ignore data for evaluate
 data
 draf.py
+
 #Ignore pycache
 /__pycache__
