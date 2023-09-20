@@ -31,24 +31,26 @@ def mean_model(x, g_mean, g_var):
     p = math.exp(-(x - g_mean)**2/(2*g_var))/(math.sqrt(2*math.pi*g_var))
     return p
 
-def update_model(lambda_b , delta_v, mean, var, g_mean, g_var):
-    # update lambda b, lr b
+def update_model(lambda_b , delta_v, lambda_bm, delta_m, mean, var, g_mean, g_var):
+    # update lambda b, lambda bm, g_mean , g_var
     if delta_v < lambda_b:
-        lr_b = 0.001
-    else:
         lr_b = 0.01
+    else:
+        lr_b = 0.1
     if lambda_b < 500:
         lambda_b = (1 - lr_b) * lambda_b + lr_b* delta_v
     
-    if mean_model(mean, g_mean, g_var) < mean_model(g_mean + 3*g_var, g_mean, g_var):
-        lr_am = 0.01
+    if delta_m < lambda_bm:
+        lr_bm = 0.01
     else:
-        lr_am = 0.1
+        lr_bm = 0.1
+    if lambda_bm < 50:
+        lambda_bm = (1 - lr_bm) * lambda_bm + lr_bm* delta_m
     
-    g_mean = (1 - lr_am)*g_mean + lr_am * mean
-    g_var = (1 - lr_am)*g_var + lr_am * var #(mean - g_mean)**2
+    g_mean = (1 - lr_b)*g_mean + lr_b * mean
+    g_var = (1 - lr_b)*g_var + lr_b * var #(mean - g_mean)**2
 
-    return lambda_b, g_mean, g_var
+    return lambda_b, lambda_bm, g_mean, g_var
 
 def update_pf(occupied, p_f, direct = 'front'):
     # upadate prior probability
@@ -67,6 +69,13 @@ def update_pf(occupied, p_f, direct = 'front'):
         p_f[-1] = 0.5
     
     return p_f
+
+def update_pfm(occupied, p_fm):
+    # upadate prior probability
+    for pos in occupied:
+        p_fm[pos] = 0.6
+    
+    return p_fm
 
 def gen_boi(frame, N_BOI, increment):
     # generate blocks
@@ -132,6 +141,10 @@ def estimate(video_path, N_BOI, N, increment):
     lambda_f = [[100 for i in range(N_BOI)] for j in range(N_lane)]
     lambda_b = [[100 for i in range(N_BOI)] for j in range(N_lane)]
     p_f = [[0.4 for i in range(N_BOI)] for j in range(N_lane)]
+
+    lambda_fm = [[20 for i in range(N_BOI)] for j in range(N_lane)]
+    lambda_bm= [[20 for i in range(N_BOI)] for j in range(N_lane)]
+    p_m = [[0.4 for i in range(N_BOI)] for j in range(N_lane)]
 
     # Mean and var for classify object
     g_mean = []
@@ -200,33 +213,41 @@ def estimate(video_path, N_BOI, N, increment):
                     # cv2.putText(frame, str(i), BOIs_coor[i][0],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
                     mean, var = get_mean_variance(img, BOIs_coor[lane][i])
                     delta_v = abs(var - g_var[lane][i])
-                    # delta_m = abs(mean - g_mean[lane][i])
+                    delta_m = abs(mean - g_mean[lane][i])
+
                     p_vb = math.exp(-delta_v/lambda_b[lane][i])
                     p_vf = 1 - math.exp(-delta_v/lambda_f[lane][i])
                     p_fv =  (p_vf * p_f[lane][i])/(p_vb * (1 - p_f[lane][i]) + p_vf * p_f[lane][i])
+
+                    p_mb = math.exp(-delta_m/lambda_bm[lane][i])
+                    p_mf = 1 - math.exp(-delta_m/lambda_fm[lane][i])
+                    p_fm = (p_mf * p_m[lane][i])/(p_mb * (1 - p_m[lane][i]) + p_mf * p_m[lane][i])
+          
                     if p_fv > 0.7 :
                         n += 1
                         occupied.append(i) #int(var)} - {int(g_var[lane][i])
-                        cv2.putText(frame, f'{int(mean)} - {int(g_mean[lane][i])} ', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2 )
+                        # cv2.putText(frame, f'var: {int(var)} - {int(g_var[lane][i])} ', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
                         if lambda_f[lane][i] < 500:
                             lambda_f[lane][i] = (1 - 0.01) * lambda_f[lane][i] + 0.01 * delta_v
-                    elif p_f[lane][i] < 0.5:
-                        lambda_b[lane][i], g_mean[lane][i], g_var[lane][i] = update_model(lambda_b[lane][i], delta_v, mean,var, g_mean[lane][i], g_var[lane][i])
+                    elif p_fm > 0.7:
+                        n += 1
+                        occupied.append(i) #int(var)} - {int(g_var[lane][i])
+                        # cv2.putText(frame, f'mean: {int(mean)} - {int(g_mean[lane][i])} ', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
+                        if lambda_fm[lane][i] < 50:
+                            lambda_fm[lane][i] = (1 - 0.01) * lambda_fm[lane][i] + 0.01 * delta_m
+
                     else:
-                        if p_f[lane][i] > 0.5 and (mean_model(mean, g_mean[lane][i], g_var[lane][i] ) < mean_model(g_mean[lane][i] + 3*g_var[lane][i] , g_mean[lane][i], g_var[lane][i]) ) :
-                            n +=1
-                            # cv2.putText(frame, f'{int(delta_m)}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2 )
-                            # cv2.putText(frame, f'{int(var)} - {int(g_var[lane][i])}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2 )
-                            occupied.append(i)
-                        else:
-                            lambda_b[lane][i], g_mean[lane][i], g_var[lane][i] = update_model(lambda_b[lane][i], delta_v, mean,var, g_mean[lane][i], g_var[lane][i])
-                    
+                        lambda_b[lane][i], lambda_bm[lane][i], g_mean[lane][i], g_var[lane][i] = update_model(lambda_b[lane][i], delta_v,lambda_bm[lane][i], delta_m, mean,var, g_mean[lane][i], g_var[lane][i])
+                        # cv2.putText(frame, f'mean: {int(mean)} - {int(g_mean[lane][i])} ', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2 )
                 d_lane = int(n * 100/N_BOI) 
                 density.append(d_lane)
                 draw_BOI(frame, BOIs_coor[lane], occupied)
             
                 p_f[lane] = [0.4 for i in range(N_BOI)]
+                p_m[lane] = [0.5 for i in range(N_BOI)]
+
                 p_f[lane] = update_pf(occupied, p_f[lane])
+                p_m[lane] = update_pfm(occupied, p_m[lane])
 
             rate = int(sum(density)/len((density)))
             if n_frame % 20 == 0:
