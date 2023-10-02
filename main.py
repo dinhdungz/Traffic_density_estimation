@@ -1,5 +1,5 @@
-import util
+from util import estimate
 
-result = util.estimate('./Data Road Traffic/n_7.mp4', 20, 6, 2)
+result = estimate('./test.mp4', 20, 6, 2)
 
 print(result)
