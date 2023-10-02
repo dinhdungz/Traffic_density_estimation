@@ -4,6 +4,7 @@ Data Road Traffic
 #Ignore data for evaluate
 data
 draf.py
+output.avi
 
 #Ignore pycache
 /__pycache__
