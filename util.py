@@ -3,6 +3,11 @@ import cv2
 import math
 import get_ROI as ROI
 import get_BOI as BOI 
+import os 
+from datetime import datetime
+import csv
+import matplotlib.pyplot as plt
+
 
 def create_variable(N_lane, N_block, N):
 
@@ -229,10 +234,60 @@ def cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean):
 
     return rate, density
 
+def save(rate, name):
+    
+    data_path = "./Result"
+    if name in os.listdir(path):
+        pass
+    else:
+        os.mkdir(f"{path}/{name}")
+    
+    # os.chdir(f"{path}/{name}")
+
+    time = datetime.now()
+
+    day = time.day
+    month = time.month 
+    year = time.year 
+
+    hour = time.hour
+    minute = time.minute
+
+    filename = f"{path}/{name}/{day}_{month}_{year}.csv"
+    with open(filename, 'a') as csvfile:
+        csvwriter = csv.writer(csvfile)
+     
+        # writing the fields
+        csvwriter.writerow([hour, minute, rate])
+
+def visualize(name, day, hour_start, hour_end, minute_start, minute_end):
+    #, hour_start, hour_end, minute_start, minute_end
+    data_path = "./Result"
+    
+    result = []
+    with open(f"{data_path}/{name}/{day}", 'r') as file:
+        csvreader = csv.reader(file)
+        for row in csvreader:
+            if hour_start == hour_end:
+               if int(row[0]) == hour_start and int(row[1]) >= minute_start and int(row[1]) <= minute_end:
+                   result.append(int(row[2]))
+            if hour_start < hour_end:
+                if int(row[0]) == hour_start and int(row[1]) >= minute_start:
+                    result.append(int(row[2]))
+                elif int(row[0]) == hour_end and int(row[1]) <= minute_end:
+                    result.append(int(row[2]))
+                
+                if hour_start < int(row[0]) < hour_end :
+                    result.append(int(row[2]))
+
+    plt.plot(result)
+    plt.show()
+
+
 def estimate(video_path, N_block, N, increment):
     # Read video
     cap = cv2.VideoCapture(video_path)
-    out = setup_video_writer(cap, "output")
+    out = setup_video_writer(cap, "test_stream")
 
     ret, frame = cap.read()
 
@@ -248,6 +303,9 @@ def estimate(video_path, N_block, N, increment):
     n_medium = 0
     n_light = 0
     n_frame = 0
+    rate_in_minute = []
+    t1 = datetime.now().minute
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -262,6 +320,7 @@ def estimate(video_path, N_block, N, increment):
 
         else:
             rate, density = cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean)
+            rate_in_minute.append(rate)
             if n_frame % 20 == 0:
                 v_density = density
             view_density(frame, v_density)
@@ -272,6 +331,15 @@ def estimate(video_path, N_block, N, increment):
                 n_medium += 1
             else:
                 n_light += 1
+
+            t2 = datetime.now().minute
+            if t2 > t1:
+                rate_mean = int(np.mean(rate_in_minute))
+                save(rate_mean, "test")
+                rate_in_minute = []
+                t1 = t2
+                if t1 == 59:
+                    t1 = -1
 
         cv2.imshow("video",frame)
         out.write(frame)
@@ -294,7 +362,4 @@ def estimate(video_path, N_block, N, increment):
     return result
 
 if __name__ == "__main__":
-    pf = [0.5, 0.5, 0.5, 0.5, 0.5]
-    occupied = [0,1]
-    pf = update_pf(occupied, pf)
-    print(pf)
+    visualize("test", "9_10_2023.csv", 9, 10, 36, 20)
