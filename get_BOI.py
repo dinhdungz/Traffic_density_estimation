@@ -33,6 +33,8 @@ def find_parallel_line_equation(point):
 
 def find_intersection_point(slope1, intercept1, slope2, intercept2):
     # Calculate the x-coordinate of the intersection point
+    if slope1 == slope2:
+        slope1 += 1 
     x = (intercept2 - intercept1) / (slope1 - slope2)
 
     # Calculate the y-coordinate of the intersection point
