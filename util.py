@@ -18,11 +18,7 @@ def create_variable(N_lane, N_block, N):
     lambda_b = [[100 for i in range(N_block)] for j in range(N_lane)]
     p_f = [[0.4 for i in range(N_block)] for j in range(N_lane)]
 
-    lambda_fm = [[30 for i in range(N_block)] for j in range(N_lane)]
-    lambda_bm= [[10 for i in range(N_block)] for j in range(N_lane)]
-    p_m = [[0.4 for i in range(N_block)] for j in range(N_lane)]
-
-    return BOIs_var, BOIs_mean, lambda_f, lambda_b, p_f, lambda_fm, lambda_bm, p_m
+    return BOIs_var, BOIs_mean, lambda_f, lambda_b, p_f
 
 
 def draw_BOI(img, coords_blocks, block_occupied):
@@ -48,7 +44,7 @@ def get_Vov(list_var):
     Vov = np.var(list_var)
     return Vov
 
-def update_model(lambda_b , delta_v, lambda_bm, delta_m):
+def update_model(lambda_b , delta_v, x, mean, var_m):
     # update lambda b, lambda bm, g_mean , g_var
     if delta_v < lambda_b:
         lr_b = 0.01
@@ -61,18 +57,17 @@ def update_model(lambda_b , delta_v, lambda_bm, delta_m):
     elif lambda_b > 500:
         lambda_b = 500
     
-    if delta_m < lambda_bm:
-        lr_bm = 0.01
+    if mean_model(x, mean, var_m) < mean_model(mean + 3*math.sqrt(var_m), mean, var_m):
+        am = 0.1
     else:
-        lr_bm = 0.1
+        am = 0.001
+    
+    mean = (1 - am)*mean + am*x
+    var_m = (1 - am)*var_m + am*(mean - x)**2
+    if var_m < 20:
+        var_m = 20 
 
-    lambda_bm = (1 - lr_bm) * lambda_bm + lr_bm* delta_m
-    if lambda_bm < 10:
-        lambda_bm = 10
-    elif lambda_bm > 40:
-        lambda_bm = 40
-
-    return lambda_b, lambda_bm
+    return lambda_b, mean, var_m
 
 def update_p(occupied, p_f, direct):
     # upadate prior probability
@@ -101,10 +96,6 @@ def gen_block(frame, N_block, increment):
 
     boi_image, BOIs_coor = BOI.get_BOI(area, lanes_image,N_block, increment)
 
-    with open("name.csv", "w") as f:
-        write = csv.writer(f)
-        write.writerows(BOIs_coor)
-
     cv2.imshow('lane', boi_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -124,7 +115,8 @@ def create_3d_list(x, y, z):
     return lst
 
 def mean_model(x, mean, var_mean):
-    p_x = math.exp((mean - x)/(2*var_mean)) /math.sqrt(2*math.pi*var_mean)
+    # print(x, mean, var_mean)
+    p_x = math.exp(-(x - mean)**2/(2*var_mean)) /(math.sqrt(2*math.pi*var_mean))
 
     return p_x
 
@@ -185,12 +177,16 @@ def init_bg(frame, count, N, BOIs_coor, BOIs_var, BOIs_mean):
 
     return init_background, count
 
-def  cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean, lambda_b, lambda_f, lambda_bm,lambda_fm, p_f, p_m, direct, pre_density):
+def  cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean, lambda_b, lambda_f, p_f, var_mean, direct, pre_density):
 
     img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     kernel = np.ones((5,5),np.float32)/25
     img = cv2.filter2D(img,-1,kernel)
 
+    if direct == "front":
+        first_block = 0
+    else:
+        first_block = N_block - 1
     density = []
     for lane in range(N_lane):
         n = 0
@@ -199,20 +195,15 @@ def  cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean, lambda_b, lambda
             # cv2.putText(frame, str(i), BOIs_coor[i][0],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
             mean, var = get_mean_variance(img, BOIs_coor[lane][i])
             delta_v = abs(var - g_var[lane][i])
-            delta_m = abs(mean - g_mean[lane][i])
 
             p_vb = math.exp(-delta_v/lambda_b[lane][i])
             p_vf = 1 - math.exp(-delta_v/lambda_f[lane][i])
             p_fv =  (p_vf * p_f[lane][i])/(p_vb * (1 - p_f[lane][i]) + p_vf * p_f[lane][i])
-
-            p_mb = math.exp(-delta_m/lambda_bm[lane][i])
-            p_mf = 1 - math.exp(-delta_m/lambda_fm[lane][i])
-            p_fm = (p_mf * p_m[lane][i])/(p_mb * (1 - p_m[lane][i]) + p_mf * p_m[lane][i])
     
             if p_fv > 0.7 :
                 n += 1
                 occupied.append(i) 
-                cv2.putText(frame, f'var: {int(var)} - {int(g_var[lane][i])} lambda {int(lambda_b[lane][i])} - {int(lambda_f[lane][i])}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2 )
+                # cv2.putText(frame, f'{int(var)}', (BOIs_coor[lane][i][1][0] + 30, BOIs_coor[lane][i][1][1]),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
                 if pre_density >= 0.3:
                     lr_f = 0.0002
                 else:
@@ -223,36 +214,36 @@ def  cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean, lambda_b, lambda
                 elif lambda_f[lane][i] < 100:
                     lambda_f[lane][i] = 100
 
-            elif p_fm > 0.7:
-                n += 1
-                occupied.append(i) #int(var)} - {int(g_var[lane][i])
-                # cv2.putText(frame, f'mean: {int(mean)} - {int(g_mean[lane][i])} lambda {int(lambda_bm[lane][i])} - {int(lambda_fm[lane][i])}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
-                lambda_fm[lane][i] = (1 - 0.01) * lambda_fm[lane][i] + 0.01 * delta_m
-                if lambda_fm[lane][i] > 80:
-                    lambda_fm[lane][i] = 80
-                elif lambda_fm[lane][i] < 20:
-                    lambda_fm[lane][i] = 20
+            elif p_f[lane][i] < 0.5 or i == first_block:
+                # print(mean, g_mean[lane][i], var_mean[lane][i])
+                # cv2.putText(frame, f'{int(var)}', (BOIs_coor[lane][i][1][0] + 30, BOIs_coor[lane][i][1][1]),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2 )
+                lambda_b[lane][i], g_mean[lane][i], var_mean[lane][i] = update_model(lambda_b[lane][i], delta_v, mean, g_mean[lane][i], var_mean[lane][i])
+                if p_f[lane][i] == 0.4:
+                    g_var[lane][i] = (1 - 0.01) * g_var[lane][i] + 0.01 * var
 
             else:
-                cv2.putText(frame, f'var: {int(var)} - {int(g_var[lane][i])} lambda {int(lambda_b[lane][i])} - {int(lambda_f[lane][i])}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
-                lambda_b[lane][i], lambda_bm[lane][i]= update_model(lambda_b[lane][i], delta_v,lambda_bm[lane][i], delta_m)
-                if p_f[lane][i] == 0.4:
-                    g_mean[lane][i] = (1 - 0.01) * g_mean[lane][i] + 0.01 * mean
-                    g_var[lane][i] = (1 - 0.01) * g_var[lane][i] + 0.01 * var
+                m1 = mean_model(mean, g_mean[lane][i], var_mean[lane][i])
+                m2 = mean_model(g_mean[lane][i] + 3* math.sqrt(var_mean[lane][i]), g_mean[lane][i], var_mean[lane][i])
+                # print(m1, m2)
+
+                if p_f[lane][i] == 0.5 and m1 < m2:
+                    # cv2.putText(frame, f'mean: {int(mean)} - {int(g_mean[lane][i])} - {int(var_mean[lane][i])}', BOIs_coor[lane][i][1],cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2 )
+                    n += 1
+                    occupied.append(i) 
+                else:
+                    lambda_b[lane][i], g_mean[lane][i], var_mean[lane][i] = update_model(lambda_b[lane][i], delta_v, mean, g_mean[lane][i], var_mean[lane][i])
+                
 
         d_lane = int(n * 100/N_block) 
         density.append(d_lane)
         draw_BOI(frame, BOIs_coor[lane], occupied)
     
         p_f[lane] = [0.4 for i in range(N_block)]
-        p_m[lane] = [0.4 for i in range(N_block)]
-
         p_f[lane] = update_p(occupied, p_f[lane], direct)
-        p_m[lane] = update_p(occupied, p_m[lane], direct)
 
     rate = int(sum(density)/len((density)))
 
-    return rate, density, lambda_b, lambda_f, lambda_bm,lambda_fm, p_f, p_m, g_var, g_mean
+    return rate, density, lambda_b, lambda_f, p_f,  g_var, g_mean, var_mean
 
 def save(rate, name):
     
@@ -309,14 +300,13 @@ def estimate(video_path, N_block, N, increment, direct = "front"):
 
     ret, frame = cap.read()
     ret, frame = cap.read()
-    ret, frame = cap.read()
 
     init_background = True
     # Coords of all block (lane x N_block x coords)
     BOIs_coor = gen_block(frame, N_block, increment)
     N_lane = len(BOIs_coor)
 
-    BOIs_var, BOIs_mean, lambda_f, lambda_b, p_f, lambda_fm, lambda_bm, p_m = create_variable(N_lane, N_block, N)
+    BOIs_var, BOIs_mean, lambda_f, lambda_b, p_f = create_variable(N_lane, N_block, N)
     
     count = 0
     n_heavy = 0
@@ -327,6 +317,7 @@ def estimate(video_path, N_block, N, increment, direct = "front"):
 
     rate_in_minute = []
     t1 = datetime.now().minute
+    
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -339,9 +330,10 @@ def estimate(video_path, N_block, N, increment, direct = "front"):
             init_background, count = init_bg(frame, count, N, BOIs_coor, BOIs_var, BOIs_mean)
             g_mean = np.mean(BOIs_mean, axis = 2)
             g_var = np.mean(BOIs_var, axis = 2)
+            var_mean = [[40 for i in range(N_block)] for j in range(N_lane)]
 
         else:
-            rate, density, lambda_b, lambda_f, lambda_bm,lambda_fm, p_f, p_m, g_var, g_mean = cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean, lambda_b, lambda_f, lambda_bm,lambda_fm, p_f, p_m, direct, desity)
+            rate, density, lambda_b, lambda_f, p_f, g_var, g_mean, var_mean = cal_rate(frame, BOIs_coor, N_lane, N_block, g_var, g_mean, lambda_b, lambda_f, p_f, var_mean, direct, desity)
             
             rate_in_minute.append(rate)
             if n_frame % 20 == 0:
