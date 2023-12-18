@@ -44,4 +44,5 @@ def draw_lanes(frame, lanes):
         bottom_right = lane[3]
         cv2.line(frame, top_left, bottom_left, (255, 0, 0), 2)
         cv2.line(frame, top_right, bottom_right, (255, 0, 0), 2)
+    
     return frame
